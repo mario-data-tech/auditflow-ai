@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>{{ brand_name }} — Auditoría Web con IA</title>
+<meta name="description" content="{{ brand_tagline }}" />
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          brand: {
+            50: '#eef2ff', 100: '#e0e7ff', 400: '#818cf8',
+            600: '#4f46e5', 700: '#4338ca', 900: '#1e1b4b'
+          }
+        }
+      }
+    }
+  }
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  body { font-family: 'Inter', sans-serif; }
+  .spinner {
+    border: 3px solid rgba(255,255,255,0.3);
+    border-top-color: white;
+    border-radius: 50%;
+    width: 20px; height: 20px;
+    animation: spin 0.7s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .fade-in { animation: fadeIn 0.4s ease-in; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+  .score-ring { transition: stroke-dashoffset 0.8s ease; }
+</style>
+</head>
+<body class="bg-gray-50 min-h-screen text-gray-900">
+
+  <!-- Header -->
+  <header class="bg-white border-b border-gray-200 sticky top-0 z-20">
+    <div class="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-brand-600 to-brand-900 flex items-center justify-center">
+          <svg class="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+          </svg>
+        </div>
+        <span class="text-lg font-bold text-brand-900">{{ brand_name }}</span>
+      </div>
+      <p class="hidden sm:block text-sm text-gray-500">{{ brand_tagline }}</p>
+    </div>
+  </header>
+
+  <main class="max-w-6xl mx-auto px-6 py-10">
+
+    <!-- Hero + Formulario -->
+    <section class="text-center mb-10">
+      <h1 class="text-3xl sm:text-4xl font-extrabold text-brand-900 tracking-tight">
+        Auditá cualquier sitio web en segundos
+      </h1>
+      <p class="mt-3 text-gray-600 max-w-xl mx-auto">
+        Accesibilidad, rendimiento, SEO técnico y cumplimiento de privacidad —
+        analizado por IA, con reporte PDF listo para tus clientes.
+      </p>
+
+      <form id="audit-form" class="mt-8 max-w-xl mx-auto flex flex-col sm:flex-row gap-3">
+        <input
+          id="url-input"
+          type="text"
+          required
+          placeholder="https://tusitio.com"
+          class="flex-1 px-4 py-3 rounded-xl border border-gray-300 focus:border-brand-600 focus:ring-2 focus:ring-brand-100 outline-none text-sm shadow-sm"
+        />
+        <button
+          id="audit-btn"
+          type="submit"
+          class="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-semibold text-sm shadow-sm transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+        >
+          <span id="btn-spinner" class="spinner hidden"></span>
+          <span id="btn-label">Auditar Ahora</span>
+        </button>
+      </form>
+      <p id="error-box" class="hidden mt-4 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-4 py-3 max-w-xl mx-auto"></p>
+    </section>
+
+    <!-- Loading skeleton -->
+    <section id="loading-section" class="hidden max-w-3xl mx-auto text-center py-16">
+      <div class="spinner mx-auto" style="width:36px;height:36px;border-color:rgba(79,70,229,0.2);border-top-color:#4f46e5;"></div>
+      <p class="mt-4 text-gray-500 text-sm">Escaneando el sitio y consultando al motor de IA… esto puede tardar unos segundos.</p>
+    </section>
+
+    <!-- Resultados -->
+    <section id="results-section" class="hidden fade-in">
+
+      <!-- Score global + resumen -->
+      <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 sm:p-8 mb-6 flex flex-col sm:flex-row gap-6 items-center">
+        <div class="flex flex-col items-center shrink-0">
+          <div class="relative w-28 h-28">
+            <svg class="w-28 h-28 -rotate-90">
+              <circle cx="56" cy="56" r="48" stroke="#E5E7EB" stroke-width="10" fill="none"/>
+              <circle id="score-circle" class="score-ring" cx="56" cy="56" r="48" stroke="#4f46e5" stroke-width="10" fill="none"
+                stroke-dasharray="301.6" stroke-dashoffset="301.6" stroke-linecap="round"/>
+            </svg>
+            <div class="absolute inset-0 flex items-center justify-center">
+              <span id="score-number" class="text-2xl font-extrabold text-brand-900">--</span>
+            </div>
+          </div>
+          <span class="text-xs text-gray-500 mt-2">Puntaje global</span>
+        </div>
+        <div class="flex-1">
+          <h2 class="text-lg font-bold text-gray-900 mb-1" id="result-url">—</h2>
+          <p id="result-summary" class="text-sm text-gray-600 leading-relaxed"></p>
+        </div>
+        <div class="shrink-0">
+          <button id="download-pdf-btn" class="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-brand-900 hover:bg-black text-white text-sm font-semibold shadow-sm transition-colors disabled:opacity-60">
+            <span id="pdf-spinner" class="spinner hidden"></span>
+            <svg id="pdf-icon" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v11.25m0 0-3.75-3.75M12 15.75l3.75-3.75M4.5 19.5h15" />
+            </svg>
+            <span id="pdf-label">Descargar PDF</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- 4 Pilares -->
+      <div class="grid sm:grid-cols-2 gap-5 mb-8" id="pillars-grid"></div>
+
+      <!-- Problemas priorizados por IA -->
+      <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 sm:p-8">
+        <h3 class="text-base font-bold text-gray-900 mb-1">Problemas priorizados por impacto comercial</h3>
+        <p class="text-xs text-gray-500 mb-5">Ordenados por la IA según impacto en conversión, riesgo legal y experiencia de usuario.</p>
+        <div id="priority-list" class="space-y-4"></div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="mt-16 border-t border-gray-200 py-6 text-center text-xs text-gray-400">
+    {{ brand_name }} · Auditoría automatizada — los resultados son orientativos y no reemplazan una auditoría legal/manual completa.
+  </footer>
+
+<script>
+const PILLAR_META = {
+  accesibilidad: { label: "Accesibilidad (WCAG)", icon: "M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm-3-9v2.25m0 13.5V21m9-9h-2.25M5.25 12H3m15.364-6.364-1.591 1.591M7.227 16.773l-1.591 1.591m0-12.728 1.591 1.591m9.546 9.546 1.591 1.591" },
+  rendimiento: { label: "Rendimiento", icon: "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Zm0-5-3-3 3-3m6 0h-9" },
+  seo: { label: "SEO Técnico", icon: "M21 21l-4.35-4.35M11 19a8 8 0 1 1 0-16 8 8 0 0 1 0 16Z" },
+  privacidad: { label: "Privacidad (GDPR/Cookies)", icon: "M12 15v2m-6 4h12a2 2 0 0 0 2-2v-6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2Zm10-10V7a4 4 0 1 0-8 0v4h8Z" }
+};
+
+const form = document.getElementById('audit-form');
+const urlInput = document.getElementById('url-input');
+const auditBtn = document.getElementById('audit-btn');
+const btnSpinner = document.getElementById('btn-spinner');
+const btnLabel = document.getElementById('btn-label');
+const errorBox = document.getElementById('error-box');
+const loadingSection = document.getElementById('loading-section');
+const resultsSection = document.getElementById('results-section');
+const downloadBtn = document.getElementById('download-pdf-btn');
+
+let lastAuditedUrl = null;
+
+function showError(msg) {
+  errorBox.textContent = msg;
+  errorBox.classList.remove('hidden');
+}
+function hideError() {
+  errorBox.classList.add('hidden');
+}
+
+function severityBadge(sev) {
+  const map = {
+    alta: 'bg-red-100 text-red-700 border-red-200',
+    media: 'bg-amber-100 text-amber-700 border-amber-200',
+    baja: 'bg-emerald-100 text-emerald-700 border-emerald-200'
+  };
+  const cls = map[sev] || map.media;
+  return `<span class="text-[10px] font-bold uppercase tracking-wide px-2 py-1 rounded-full border ${cls}">${sev}</span>`;
+}
+
+function scoreColor(score) {
+  if (score >= 80) return '#059669';
+  if (score >= 50) return '#D97706';
+  return '#DC2626';
+}
+
+function renderPillars(pilares) {
+  const grid = document.getElementById('pillars-grid');
+  grid.innerHTML = '';
+  Object.entries(PILLAR_META).forEach(([key, meta]) => {
+    const info = pilares[key] || { score: 0, total_issues: 0, issues: [] };
+    const color = scoreColor(info.score);
+    const issuesHtml = info.issues.slice(0, 4).map(issue => `
+      <li class="flex items-start gap-2 text-xs text-gray-600 py-1.5 border-t border-gray-100 first:border-t-0">
+        ${severityBadge(issue.severity)}
+        <span class="flex-1"><span class="font-medium text-gray-800">${issue.title}</span></span>
+      </li>`).join('');
+    const card = document.createElement('div');
+    card.className = 'bg-white rounded-2xl border border-gray-200 shadow-sm p-5';
+    card.innerHTML = `
+      <div class="flex items-center justify-between mb-3">
+        <div class="flex items-center gap-2">
+          <svg class="w-5 h-5" style="color:${color}" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+            <path stroke-linecap="round" stroke-linejoin="round" d="${meta.icon}" />
+          </svg>
+          <h4 class="text-sm font-bold text-gray-900">${meta.label}</h4>
+        </div>
+        <span class="text-sm font-extrabold" style="color:${color}">${info.score}/100</span>
+      </div>
+      <ul class="mt-1">
+        ${issuesHtml || '<li class="text-xs text-gray-400 py-1">Sin problemas detectados 🎉</li>'}
+      </ul>
+      ${info.issues.length > 4 ? `<p class="text-[11px] text-gray-400 mt-2">+${info.issues.length - 4} más en el PDF completo</p>` : ''}
+    `;
+    grid.appendChild(card);
+  });
+}
+
+function renderPriorityList(problemas) {
+  const container = document.getElementById('priority-list');
+  container.innerHTML = '';
+  if (!problemas || problemas.length === 0) {
+    container.innerHTML = '<p class="text-sm text-gray-400">No hay problemas priorizados.</p>';
+    return;
+  }
+  problemas.forEach((p, idx) => {
+    const codeBlock = p.codigo_sugerido
+      ? `<pre class="mt-3 bg-gray-900 text-gray-100 text-xs rounded-lg p-3 overflow-x-auto"><code>${p.codigo_sugerido.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</code></pre>`
+      : '';
+    const div = document.createElement('div');
+    div.className = 'border border-gray-200 rounded-xl p-4';
+    div.innerHTML = `
+      <div class="flex items-start justify-between gap-3">
+        <div class="flex items-center gap-2">
+          <span class="text-xs font-bold text-gray-400">#${idx + 1}</span>
+          <h4 class="text-sm font-semibold text-gray-900">${p.titulo}</h4>
+        </div>
+        ${severityBadge(p.prioridad)}
+      </div>
+      <p class="text-xs text-gray-600 mt-2 leading-relaxed">${p.impacto_comercial || ''}</p>
+      ${codeBlock}
+    `;
+    container.appendChild(div);
+  });
+}
+
+function animateScore(score) {
+  const circle = document.getElementById('score-circle');
+  const circumference = 301.6;
+  const offset = circumference - (score / 100) * circumference;
+  circle.style.stroke = scoreColor(score);
+  requestAnimationFrame(() => { circle.style.strokeDashoffset = offset; });
+  document.getElementById('score-number').textContent = score;
+}
+
+form.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  hideError();
+  const url = urlInput.value.trim();
+  if (!url) return;
+
+  auditBtn.disabled = true;
+  btnSpinner.classList.remove('hidden');
+  btnLabel.textContent = 'Auditando…';
+  resultsSection.classList.add('hidden');
+  loadingSection.classList.remove('hidden');
+
+  try {
+    const res = await fetch('/api/audit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url })
+    });
+    const data = await res.json();
+
+    if (!res.ok) {
+      throw new Error(data.detail || 'Ocurrió un error al auditar el sitio.');
+    }
+
+    lastAuditedUrl = url;
+    document.getElementById('result-url').textContent = data.url;
+    document.getElementById('result-summary').textContent = data.analisis_ia.resumen_ejecutivo;
+    animateScore(data.puntaje_global);
+    renderPillars(data.pilares);
+    renderPriorityList(data.analisis_ia.problemas_priorizados);
+
+    loadingSection.classList.add('hidden');
+    resultsSection.classList.remove('hidden');
+    resultsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  } catch (err) {
+    loadingSection.classList.add('hidden');
+    showError(err.message || 'No se pudo completar la auditoría. Verificá la URL e intentá de nuevo.');
+  } finally {
+    auditBtn.disabled = false;
+    btnSpinner.classList.add('hidden');
+    btnLabel.textContent = 'Auditar Ahora';
+  }
+});
+
+downloadBtn.addEventListener('click', async () => {
+  if (!lastAuditedUrl) return;
+  const pdfSpinner = document.getElementById('pdf-spinner');
+  const pdfIcon = document.getElementById('pdf-icon');
+  const pdfLabel = document.getElementById('pdf-label');
+
+  downloadBtn.disabled = true;
+  pdfSpinner.classList.remove('hidden');
+  pdfIcon.classList.add('hidden');
+  pdfLabel.textContent = 'Generando PDF…';
+
+  try {
+    const res = await fetch('/api/audit/pdf', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url: lastAuditedUrl })
+    });
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.detail || 'No se pudo generar el PDF.');
+    }
+    const blob = await res.blob();
+    const link = document.createElement('a');
+    link.href = window.URL.createObjectURL(blob);
+    link.download = 'reporte-auditoria.pdf';
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+  } catch (err) {
+    showError(err.message);
+  } finally {
+    downloadBtn.disabled = false;
+    pdfSpinner.classList.add('hidden');
+    pdfIcon.classList.remove('hidden');
+    pdfLabel.textContent = 'Descargar PDF';
+  }
+});
+</script>
+</body>
+</html>

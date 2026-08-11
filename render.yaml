@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: auditflow-ai
+    env: python
+    region: oregon
+    plan: starter
+    buildCommand: "pip install -r requirements.txt && playwright install --with-deps chromium"
+    startCommand: "uvicorn app.main:app --host 0.0.0.0 --port $PORT"
+    envVars:
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: OPENAI_MODEL
+        value: gpt-4o-mini
+      - key: BRAND_NAME
+        value: AuditFlow AI
+      - key: BRAND_TAGLINE
+        value: Auditoria web automatizada con Inteligencia Artificial
+      - key: PYTHON_VERSION
+        value: 3.11.9
