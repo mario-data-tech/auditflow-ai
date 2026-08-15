@@ -1,3 +1,6 @@
 fastapi
 uvicorn
 mangum
+requests
+pydantic
+jinja2
